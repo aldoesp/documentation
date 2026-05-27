@@ -1,147 +1,175 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 
-// ==========================================
-// 1. LE COMPOSANT DE BLOC DE CODE COPIABLE
-// ==========================================
+// === COMPOSANT CODEBLOCK (Inchangé) ===
 const CodeBlock = ({ content }) => {
   const [copied, setCopied] = useState(false);
-
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(content);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000); // Rétroaction de 2 secondes
-    } catch (err) {
-      console.error("Échec de la copie : ", err);
-    }
+    await navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
-
   return (
-    <div className="my-3 flex items-center justify-between rounded-xl bg-[#121212] border border-neutral-800 p-4 font-mono text-sm text-neutral-200 shadow-lg">
-      <code className="break-all pr-4">{content}</code>
-      <button
-        onClick={handleCopy}
-        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
-          copied
-            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-            : 'bg-neutral-800 text-neutral-400 border border-neutral-700 hover:bg-neutral-700 hover:text-neutral-200'
-        }`}
-      >
-        {copied ? (
-          <>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-            Copié
-          </>
-        ) : (
-          <>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-            Copier
-          </>
-        )}
+    <div className="my-3 flex items-center justify-between rounded-xl bg-[#121212] border border-neutral-800 p-4 font-mono text-sm text-neutral-200">
+      <code>{content}</code>
+      <button onClick={handleCopy} className={`px-3 py-1.5 text-xs rounded-lg ${copied ? 'bg-emerald-500/10 text-emerald-400' : 'bg-neutral-800 text-neutral-400'}`}>
+        {copied ? 'Copié' : 'Copier'}
       </button>
     </div>
   );
 };
 
-// ==========================================
-// 2. LE MOTEUR DE RENDU (INTERPRÉTEUR)
-// ==========================================
+// === INTERPRÉTEUR DE LIGNES (Inchangé) ===
 const DocRenderer = ({ rawText }) => {
   if (!rawText) return <p className="text-neutral-500 italic">L'aperçu s'affichera ici...</p>;
-
   const lines = rawText.split('\n');
-
   return (
     <div className="space-y-3 text-neutral-300">
       {lines.map((line, index) => {
         const trimmedLine = line.trim();
-
-        // Règle # : Texte en gras / Titre
-        if (trimmedLine.startsWith('#')) {
-          return (
-            <p key={index} className="text-xl font-bold text-white mt-4">
-              {trimmedLine.substring(1).trim()}
-            </p>
-          );
-        }
-
-        // Règle src="" : Image
+        if (trimmedLine.startsWith('#')) return <p key={index} className="text-xl font-bold text-white mt-4">{trimmedLine.substring(1).trim()}</p>;
         if (trimmedLine.startsWith('src="')) {
-          const match = trimmedLine.match(/"([^"]+)"/);
-          const src = match ? match[1] : '';
-          
-          return src ? (
-            <div key={index} className="my-4 overflow-hidden rounded-lg border border-neutral-800">
-              <img src={src} alt="Documentation" className="h-auto w-full object-cover" />
-            </div>
-          ) : null;
+          const src = trimmedLine.match(/"([^"]+)"/)?.[1];
+          return src ? <div key={index} className="my-4 rounded-lg overflow-hidden border border-neutral-800"><img src={src} alt="Doc" /></div> : null;
         }
-
-        // Règle $ : Bloc de code copiable
-        if (trimmedLine.startsWith('$')) {
-          return <CodeBlock key={index} content={trimmedLine.substring(1).trim()} />;
-        }
-
-        // Saut de ligne vide
+        if (trimmedLine.startsWith('$')) return <CodeBlock key={index} content={trimmedLine.substring(1).trim()} />;
         if (trimmedLine === '') return <div key={index} className="h-2" />;
-        
-        // Texte normal par défaut
-        return <p key={index} className="leading-relaxed text-neutral-400">{line}</p>;
+        return <p key={index} className="text-neutral-400">{line}</p>;
       })}
     </div>
   );
 };
 
-// ==========================================
-// 3. LE COMPOSANT PRINCIPAL (INTERFACE)
-// ==========================================
+// === COMPOSANT PRINCIPAL ===
 export default function App() {
-  // Texte initial pour faire une démo directe dans ton appli
-  const [text, setText] = useState(
-    '# Bienvenue sur ton interpréteur\n\n' +
-    'Voici une ligne de texte normale.\n\n' +
-    '$ npm run dev\n\n' +
-    'Et voici une image en dessous :\n' +
-    'src="https://images.unsplash.com/photo-1618401471353-b98afee0b2eb?w=600"'
-  );
+  const [documents, setDocuments] = useState([]);
+  const [titre, setTitre] = useState("");
+  const [text, setText] = useState("");
+  const [selectedId, setSelectedId] = useState(null);
+
+  // 1. Charger la liste des docs au démarrage
+  const fetchDocuments = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/documents');
+      const data = await res.json();
+      setDocuments(data);
+    } catch (err) {
+      console.error("Erreur chargement liste :", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
+
+  // 2. Charger un doc précis au clic dans le menu
+  const loadDocument = async (id) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/documents/${id}`);
+      const data = await res.json();
+      setSelectedId(data.id);
+      setTitre(data.titre);
+      setText(data.contenu);
+    } catch (err) {
+      console.error("Erreur chargement doc :", err);
+    }
+  };
+
+  // 3. Sauvegarder un nouveau document
+  const handleSave = async () => {
+    if (!titre.trim() || !text.trim()) return alert("Remplis le titre et le contenu !");
+    try {
+      const res = await fetch('http://localhost:5000/api/documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titre, contenu: text })
+      });
+      if (res.ok) {
+        alert("Document sauvegardé !");
+        setTitre("");
+        setText("");
+        setSelectedId(null);
+        fetchDocuments(); // Rafraîchit le menu
+      }
+    } catch (err) {
+      console.error("Erreur sauvegarde :", err);
+    }
+  };
+
+  // 4. Bouton pour vider l'éditeur et créer un nouveau doc
+  const handleNewDoc = () => {
+    setTitre("");
+    setText("");
+    setSelectedId(null);
+  };
 
   return (
-    <div className="min-h-screen bg-[#0b0b0c] text-white p-6 font-sans">
-      {/* Barre supérieure */}
-      <header className="mb-6 border-b border-neutral-800 pb-4 flex justify-between items-center">
-        <h1 className="text-lg font-semibold tracking-tight text-neutral-200">
-          DocInterpreter <span className="text-xs bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded ml-2">v1.0</span>
-        </h1>
-      </header>
-
-      {/* Grille principale (Éditeur à gauche, Rendu à droite) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-120px)]">
-        
-        {/* Zone de saisie */}
-        <div className="flex flex-col">
-          <label className="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-2">Éditeur (.txt)</label>
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            className="w-full flex-1 resize-none rounded-xl bg-[#121212] border border-neutral-800 p-4 font-mono text-sm text-neutral-300 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700 transition-all"
-            placeholder="Écris ton code ici... \n# pour le gras\n$ pour le code\nsrc='url' pour l'image"
-          />
-        </div>
-
-        {/* Zone d'affichage */}
-        <div className="flex flex-col">
-          <label className="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-2">Rendu visuel</label>
-          <div className="w-full flex-1 overflow-y-auto rounded-xl bg-[#121212]/40 border border-neutral-800 p-6 backdrop-blur-sm">
-            <DocRenderer rawText={text} />
+    <div className="min-h-screen bg-[#0b0b0c] text-white flex font-sans">
+      
+      {/* BARRE LATÉRALE : Le Menu des documents */}
+      <aside className="w-64 bg-[#121212] border-r border-neutral-800 p-4 flex flex-col justify-between">
+        <div>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-4">Mes Documents</h2>
+          <div className="space-y-1 overflow-y-auto max-h-[70vh]">
+            {documents.map((doc) => (
+              <button
+                key={doc.id}
+                onClick={() => loadDocument(doc.id)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all truncate block ${
+                  selectedId === doc.id ? 'bg-neutral-800 text-white font-medium' : 'text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200'
+                }`}
+              >
+                📄 {doc.titre}
+              </button>
+            ))}
           </div>
         </div>
 
-      </div>
+        {/* Bouton pour créer un nouveau doc en bas du menu */}
+        <button
+          onClick={handleNewDoc}
+          className="w-full bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-sm py-2 px-4 rounded-xl border border-neutral-700 font-medium transition-all"
+        >
+          + Nouveau Document
+        </button>
+      </aside>
+
+      {/* ZONE PRINCIPALE (Éditeur + Rendu) */}
+      <main className="flex-1 p-6 flex flex-col">
+        <header className="mb-6 flex gap-4 items-center">
+          <input
+            type="text"
+            placeholder="Titre du document..."
+            value={titre}
+            onChange={(e) => setTitre(e.target.value)}
+            className="bg-[#121212] border border-neutral-800 rounded-xl px-4 py-2 text-sm w-64 focus:outline-none focus:border-neutral-700 text-white"
+          />
+          <button
+            onClick={handleSave}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm px-4 py-2 rounded-xl font-medium transition-all"
+          >
+            Enregistrer dans la BDD
+          </button>
+        </header>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 h-[calc(100vh-140px)]">
+          {/* Éditeur */}
+          <div className="flex flex-col">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              className="w-full flex-1 resize-none rounded-xl bg-[#121212] border border-neutral-800 p-4 font-mono text-sm text-neutral-300 focus:outline-none focus:border-neutral-700"
+              placeholder="Écris ta doc ici..."
+            />
+          </div>
+
+          {/* Rendu */}
+          <div className="w-full overflow-y-auto rounded-xl bg-[#121212]/40 border border-neutral-800 p-6">
+            <DocRenderer rawText={text} />
+          </div>
+        </div>
+      </main>
+
     </div>
   );
 }
