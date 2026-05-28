@@ -64,6 +64,37 @@ export default function App() {
     } catch (err) { console.error(err); }
   };
 
+  // --- LOGIQUE D'IMPORTATION DE TEXTE (PDF, TXT, DOCX) ---
+  const handleDocumentImport = async (file) => {
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('http://localhost:5000/api/import-file', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Échec de l'extraction");
+      }
+
+      const data = await res.json();
+
+      if (data.text) {
+        // Ajoute le texte extrait proprement à la suite de l'éditeur avec une séparation visuelle
+        setText((prevText) => prevText + `\n\n# --- Contenu importé : ${file.name} ---\n${data.text}\n`);
+        alert(`Texte extrait avec succès de "${file.name}" !`);
+      }
+    } catch (err) {
+      console.error("Erreur d'import :", err);
+      alert(err.message || "Une erreur est survenue lors de la lecture du document.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0b0b0c] text-white flex font-sans overflow-hidden">
       
@@ -82,11 +113,12 @@ export default function App() {
           setTitre={setTitre} 
           onSave={handleSave} 
           onImageImport={handleImageImport}
+          onDocumentImport={handleDocumentImport} // <-- Ajoute cette ligne
           showSidebar={showSidebar}
           setShowSidebar={setShowSidebar}
           viewMode={viewMode}
           setViewMode={setViewMode}
-        />
+/>
 
         {/* Espace de travail avec grille dynamique selon viewMode */}
         <div className="flex gap-6 flex-1 min-h-0 w-full transition-all duration-300">

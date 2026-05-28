@@ -5,6 +5,8 @@ const cors = require('cors');
 const path = require('path'); // <-- Ajoute ça
 const multer = require('multer'); // <-- Ajoute ça
 const crypto = require('crypto'); // <-- Ajoute ça
+const pdf = require('pdf-parse'); // <-- Ajoute ça
+const mammoth = require('mammoth'); // <-- Ajoute ça
 const fs = require('fs'); // <-- Ajoute ça
 
 
@@ -77,6 +79,49 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
     // En cas de crash, on nettoie le fichier temporaire s'il existe toujours
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
     res.status(500).json({ error: "Erreur serveur lors du traitement de l'image" });
+  }
+});
+
+// --- NOUVELLE ROUTE : EXTRACTION DE TEXTE DEPUIS UN DOCUMENT ---
+app.post('/api/import-file', upload.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "Aucun fichier reçu" });
+  }
+
+  const filePath = req.file.path;
+  const extension = path.extname(req.file.originalname).toLowerCase();
+
+  try {
+    let extractedText = "";
+
+    // 1. Traitement selon l'extension du fichier
+    if (extension === '.txt') {
+      extractedText = fs.readFileSync(filePath, 'utf-8');
+    } 
+    else if (extension === '.pdf') {
+      const dataBuffer = fs.readFileSync(filePath);
+      const pdfData = await pdf(dataBuffer);
+      extractedText = pdfData.text;
+    } 
+    else if (extension === '.docx') {
+      const result = await mammoth.extractRawText({ path: filePath });
+      extractedText = result.value; // Contient le texte brut extrait du Word
+    } 
+    else {
+      fs.unlinkSync(filePath); // Nettoyage
+      return res.status(400).json({ error: "Format non supporté. Utilisez .txt, .pdf ou .docx" });
+    }
+
+    // 2. Nettoyage du fichier temporaire sur le disque
+    fs.unlinkSync(filePath);
+
+    // 3. Envoi du texte brut au Frontend
+    res.json({ text: extractedText });
+
+  } catch (err) {
+    console.error("Erreur lors de l'extraction du fichier :", err);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath); // Sécurité
+    res.status(500).json({ error: "Impossible de lire le contenu de ce fichier." });
   }
 });
 
