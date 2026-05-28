@@ -1,4 +1,14 @@
 import React, { useRef } from 'react';
+// Importation des icônes dont on a besoin
+import { 
+  SquarePen, 
+  Columns, 
+  Eye, 
+  PanelLeftClose, 
+  PanelLeftOpen, 
+  Image, 
+  Save 
+} from 'lucide-react';
 
 const Navbar = ({ titre, setTitre, onSave, onImageImport, showSidebar, setShowSidebar, viewMode, setViewMode }) => {
   const fileInputRef = useRef(null);
@@ -24,54 +34,66 @@ const Navbar = ({ titre, setTitre, onSave, onImageImport, showSidebar, setShowSi
         />
       </div>
 
-      {/* DROITE : Contrôles IHM et Actions */}
-      <div className="flex items-center gap-4">
+      {/* DROITE : Contrôles et Actions */}
+      <div className="flex items-center gap-3">
         
-        {/* 1. Sélecteur de Mode de Vue (IHM propre) */}
-        <div className="flex bg-[#121212] rounded-lg p-1 border border-neutral-800">
+        {/* Sélecteur de Mode de Vue */}
+        <div className="flex bg-[#121212] rounded-xl p-1 border border-neutral-800">
           <button 
             onClick={() => setViewMode('editor')}
             title="Saisie uniquement"
-            className={`px-3 py-1.5 rounded text-sm transition-all ${viewMode === 'editor' ? 'bg-neutral-800 text-white shadow' : 'text-neutral-500 hover:text-neutral-300'}`}
+            className={`p-2 rounded-lg transition-all ${viewMode === 'editor' ? 'bg-neutral-800 text-white shadow' : 'text-neutral-500 hover:text-neutral-300'}`}
           >
-            📝
+            <SquarePen className="w-4 h-4" />
           </button>
           <button 
             onClick={() => setViewMode('split')}
             title="Écran scindé"
-            className={`px-3 py-1.5 rounded text-sm transition-all ${viewMode === 'split' ? 'bg-neutral-800 text-white shadow' : 'text-neutral-500 hover:text-neutral-300'}`}
+            className={`p-2 rounded-lg transition-all ${viewMode === 'split' ? 'bg-neutral-800 text-white shadow' : 'text-neutral-500 hover:text-neutral-300'}`}
           >
-            🌗
+            <Columns className="w-4 h-4" />
           </button>
           <button 
             onClick={() => setViewMode('preview')}
             title="Aperçu uniquement"
-            className={`px-3 py-1.5 rounded text-sm transition-all ${viewMode === 'preview' ? 'bg-neutral-800 text-white shadow' : 'text-neutral-500 hover:text-neutral-300'}`}
+            className={`p-2 rounded-lg transition-all ${viewMode === 'preview' ? 'bg-neutral-800 text-white shadow' : 'text-neutral-500 hover:text-neutral-300'}`}
           >
-            👁️
+            <Eye className="w-4 h-4" />
           </button>
         </div>
 
-        {/* 2. Bouton Menu Latéral (En haut à droite) */}
+        {/* Bouton Menu Latéral Dynamique */}
         <button 
           onClick={() => setShowSidebar(!showSidebar)}
           title={showSidebar ? "Masquer le menu" : "Afficher le menu"}
-          className={`p-2 rounded-lg border transition-all flex items-center justify-center ${showSidebar ? 'bg-neutral-800 border-neutral-700 text-white' : 'bg-transparent border-neutral-800 text-neutral-400 hover:bg-[#121212]'}`}
+          className={`p-2 rounded-xl border transition-all flex items-center justify-center ${
+            showSidebar 
+              ? 'bg-neutral-800 border-neutral-700 text-white' 
+              : 'bg-transparent border-neutral-800 text-neutral-400 hover:bg-[#121212]'
+          }`}
         >
-          🗂️
+          {showSidebar ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
         </button>
 
-        <div className="w-px h-6 bg-neutral-800 mx-1"></div> {/* Séparateur visuel */}
+        <div className="w-px h-6 bg-neutral-800 mx-1"></div>
 
-        {/* 3. Actions (Import et Sauvegarde) */}
+        {/* Actions (Import et Sauvegarde) */}
         <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
         
-        <button onClick={() => fileInputRef.current.click()} className="bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-sm px-4 py-2.5 rounded-xl font-medium border border-neutral-700 transition-all">
-          🖼️ Image
+        <button 
+          onClick={() => fileInputRef.current.click()} 
+          className="bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-sm px-4 py-2.5 rounded-xl font-medium border border-neutral-700 transition-all flex items-center gap-2"
+        >
+          <Image className="w-4 h-4 text-neutral-400" />
+          <span>Image</span>
         </button>
 
-        <button onClick={onSave} className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm px-6 py-2.5 rounded-xl font-semibold transition-all">
-          Enregistrer
+        <button 
+          onClick={onSave} 
+          className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm px-5 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20 active:scale-95"
+        >
+          <Save className="w-4 h-4" />
+          <span>Enregistrer</span>
         </button>
       </div>
     </header>
