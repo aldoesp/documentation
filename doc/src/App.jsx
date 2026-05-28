@@ -69,7 +69,7 @@ export default function App() {
     } catch (err) { console.error(err); }
   };
 
-  // --- FONCTIONNALITÉ GLOBO-EXPORTATION ---
+  // --- FONCTIONNALITÉ DE GLOBALE EXPORTATION OPTIMISÉE ---
   const handleExport = (format) => {
     const filename = titre.trim() ? titre.replace(/\s+/g, '_') : 'document_export';
 
@@ -84,29 +84,75 @@ export default function App() {
       URL.revokeObjectURL(url);
     } 
     else if (format === 'html') {
-      // 2. Export HTML autonome (récupération du rendu graphique de DocRenderer)
+      // Récupération de l'ensemble de la zone d'aperçu
       const previewContent = document.getElementById('preview-pane')?.innerHTML || '';
+
+      // Génération d'un gabarit HTML autonome, stylisé et adaptatif
       const htmlTemplate = `
         <!DOCTYPE html>
         <html lang="fr">
         <head>
           <meta charset="UTF-8">
-          <title>${titre || 'Document'}</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${titre || 'Document Exporté'}</title>
+          
+          <script src="https://cdn.tailwindcss.com"></script>
+          
           <style>
-            body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; background: #fff; color: #1a1a1a; line-height: 1.6; }
-            h1 { font-size: 2.25em; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; }
-            h2 { font-size: 1.75em; margin-top: 30px; }
-            pre { background: #f3f4f6; padding: 16px; rounded: 8px; overflow-x: auto; font-family: monospace; border-radius: 8px; }
-            code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
-            img { max-width: 100%; height: auto; border-radius: 8px; margin: 15px 0; }
+            body { 
+              background-color: #0b0b0c !important; 
+              color: #e5e7eb !important;
+              font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              line-height: 1.7;
+            }
+            /* Correction IHM : Forcer l'affichage du titre h1 qui était masqué à l'écran */
+            h1.print\\:block { 
+              display: block !important; 
+              font-size: 2.5rem !important; 
+              font-weight: 800 !important; 
+              color: #ffffff !important; 
+              border-bottom: 2px solid #262626 !important; 
+              padding-bottom: 0.75rem !important; 
+              margin-top: 1rem !important;
+              margin-bottom: 2rem !important; 
+            }
+            /* Fallback de sécurité pour balises Markdown pures */
+            h2 { font-size: 1.75rem !important; font-weight: 700 !important; color: #10b981 !important; margin-top: 2.5rem !important; margin-bottom: 1.25rem !important; border-bottom: 1px solid #1f1f23 !important; padding-bottom: 0.4rem !important; }
+            h3 { font-size: 1.35rem !important; font-weight: 600 !important; color: #ffffff !important; margin-top: 2rem !important; margin-bottom: 1rem !important; }
+            p { margin-bottom: 1.25rem !important; color: #d1d5db !important; font-size: 1rem !important; }
+            
+            /* Listes */
+            ul { list-style-type: disc !important; padding-left: 1.75rem !important; margin-bottom: 1.25rem !important; }
+            ol { list-style-type: decimal !important; padding-left: 1.75rem !important; margin-bottom: 1.25rem !important; }
+            li { margin-bottom: 0.5rem !important; color: #d1d5db !important; }
+            
+            /* Blocs de code & inline code */
+            pre { background-color: #121212 !important; border: 1px solid #262626 !important; padding: 1.25rem !important; border-radius: 0.75rem !important; overflow-x: auto !important; margin-bottom: 1.5rem !important; }
+            code { font-family: 'Fira Code', Consolas, Monaco, monospace !important; font-size: 0.9em !important; }
+            :not(pre) > code { background-color: #1a1a1e !important; color: #f43f5e !important; padding: 0.2rem 0.5rem !important; border-radius: 0.375rem !important; font-weight: 500 !important; }
+            
+            /* Images immersives */
+            img { max-width: 100% !important; height: auto !important; border-radius: 0.75rem !important; margin: 2rem auto !important; display: block; border: 1px solid #262626 !important; shadow: 0 10px 15px -3px rgba(0,0,0,0.5); }
+            
+            /* Tableaux complexes structurés */
+            table { width: 100% !important; border-collapse: collapse !important; margin-bottom: 1.75rem !important; font-size: 0.95rem !important; }
+            th, td { border: 1px solid #262626 !important; padding: 0.85rem 1rem !important; text-align: left !important; }
+            th { background-color: #121212 !important; color: #ffffff !important; font-weight: 600 !important; }
+            tr:nth-child(even) { background-color: #121212/40 !important; }
+            
+            /* Citations */
+            blockquote { border-left: 4px solid #10b981 !important; padding-left: 1.25rem !important; color: #9ca3af !important; font-style: italic !important; margin: 1.75rem 0 !important; background-color: #121212/20 !important; padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; border-radius: 0 0.5rem 0.5rem 0; }
           </style>
         </head>
-        <body>
-          <h1>${titre || 'Sans titre'}</h1>
-          <div>${previewContent}</div>
+        <body class="bg-[#0b0b0c] text-neutral-200 antialiased">
+          <div class="max-w-3xl mx-auto px-6 py-12">
+            ${previewContent}
+          </div>
         </body>
         </html>
       `;
+
+      // Compilation et téléchargement instantané du fichier HTML autonome
       const blob = new Blob([htmlTemplate], { type: 'text/html;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -116,7 +162,6 @@ export default function App() {
       URL.revokeObjectURL(url);
     } 
     else if (format === 'pdf') {
-      // 3. Export PDF via l'utilitaire d'impression natif optimisé
       window.print();
     }
   };
