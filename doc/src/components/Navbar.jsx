@@ -51,7 +51,7 @@ const Navbar = ({ titre, setTitre, onSave, onImageImport }) => {
           onClick={onSave}
           className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm px-6 py-2.5 rounded-xl font-semibold shadow-lg shadow-emerald-900/20 transition-all active:scale-95"
         >
-          Enregistrer dans la BDD
+          Sauvegarder
         </button>
       </div>
     </header>

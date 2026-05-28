@@ -4,6 +4,8 @@ const { Pool } = require('pg');
 const cors = require('cors');
 const path = require('path'); // <-- Ajoute ça
 const multer = require('multer'); // <-- Ajoute ça
+const crypto = require('crypto'); // <-- Ajoute ça
+const fs = require('fs'); // <-- Ajoute ça
 
 
 const app = express();
@@ -21,27 +23,61 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
-// 2. Configuration de Multer pour renommer et stocker les fichiers
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Le dossier où stocker les images
-  },
-  filename: (req, file, cb) => {
-    // Génère un nom unique pour éviter les doublons (timestamp + extension d'origine)
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-const upload = multer({ storage: storage });
+// Configuration basique de Multer  (On garde les fichiers temporairement)
+const upload = multer({dest: 'uploads/'});
 
-// 3. NOUVELLE ROUTE : Recevoir l'image et renvoyer son URL
-app.post('/api/upload', upload.single('image'), (req, res) => {
+// --- NOUVELLE ROUTE SÉCURISÉE ET OPTIMISÉE ---
+app.post('/api/upload', upload.single('image'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "Aucun fichier reçu" });
   }
-  // On construit l'URL de l'image sur ton serveur local
-  const imageUrl = `http://localhost:5000/uploads/${req.file.filename}`;
-  res.json({ url: imageUrl });
+
+  const tempPath = req.file.path; // Chemin du fichier que Multer vient de créer
+
+  try {
+    // 1. Calculer le hash SHA-256 de l'image reçue
+    const fileBuffer = fs.readFileSync(tempPath);
+    const hashSum = crypto.createHash('sha256');
+    hashSum.update(fileBuffer);
+    const fileHash = hashSum.digest('hex'); // Voici l'identifiant unique de ton image
+
+    // 2. Vérifier si ce hash existe déjà dans PostgreSQL
+    const checkQuery = 'SELECT filename FROM images WHERE hash = $1';
+    const checkResult = await pool.query(checkQuery, [fileHash]);
+
+    if (checkResult.rows.length > 0) {
+      // ÉVITER LA REDONDANCE : L'image existe déjà !
+      const existingFilename = checkResult.rows[0].filename;
+      
+      // On supprime le fichier temporaire qui vient d'être uploadé pour ne pas gâcher de l'espace
+      fs.unlinkSync(tempPath); 
+
+      // On renvoie l'URL de l'ancienne image déjà stockée
+      const imageUrl = `http://localhost:5000/uploads/${existingFilename}`;
+      return res.json({ url: imageUrl, message: "Image existante réutilisée (Optimisation)" });
+    }
+
+    // 3. Si l'image est nouvelle : On la renomme proprement avec son extension
+    const extension = path.extname(req.file.originalname);
+    const finalFilename = `${fileHash}${extension}`; // Le nom du fichier devient son propre Hash
+    const finalPath = path.join('uploads/', finalFilename);
+
+    fs.renameSync(tempPath, finalPath); // On applique le changement de nom
+
+    // 4. On enregistre cette nouvelle image dans la base de données
+    const insertQuery = 'INSERT INTO images (hash, filename) VALUES ($1, $2)';
+    await pool.query(insertQuery, [fileHash, finalFilename]);
+
+    // 5. On renvoie l'URL de la nouvelle image
+    const imageUrl = `http://localhost:5000/uploads/${finalFilename}`;
+    res.json({ url: imageUrl, message: "Nouvelle image enregistrée" });
+
+  } catch (err) {
+    console.error("Erreur lors de la déduplication :", err);
+    // En cas de crash, on nettoie le fichier temporaire s'il existe toujours
+    if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+    res.status(500).json({ error: "Erreur serveur lors du traitement de l'image" });
+  }
 });
 
 // --- Tes anciennes routes GET et POST pour les documents restent exactement les mêmes ---
