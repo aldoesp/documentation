@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-// Ajout de Download et ChevronDown pour le menu d'export
+// Importation des icônes spécifiques pour les formats de fichiers
 import { 
   SquarePen, 
   Columns, 
@@ -10,7 +10,9 @@ import {
   FileUp, 
   Save,
   Download,
-  ChevronDown
+  ChevronDown,
+  FileText, // Pour le Markdown et le PDF
+  FileCode  // Pour l'HTML
 } from 'lucide-react';
 
 const Navbar = ({ 
@@ -19,12 +21,9 @@ const Navbar = ({
 }) => {
   const imageInputRef = useRef(null);
   const docInputRef = useRef(null);
-  
-  // État pour ouvrir/fermer le menu déroulant d'export
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   return (
-    // La classe print:hidden cache toute la Navbar lors de l'impression PDF
     <header className="mb-6 flex gap-4 items-center justify-between bg-[#0b0b0c] py-2 print:hidden">
       
       {/* GAUCHE : Saisie du titre */}
@@ -69,7 +68,7 @@ const Navbar = ({
           <span>Doc</span>
         </button>
 
-        {/* MENU DÉROULANT EXPORT (IHM Standard) */}
+        {/* MENU DÉROULANT EXPORT UNIFORMISÉ */}
         <div className="relative">
           <button 
             onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -82,28 +81,37 @@ const Navbar = ({
 
           {dropdownOpen && (
             <>
-              {/* Fond invisible pour fermer le menu si on clique ailleurs */}
               <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)}></div>
               
-              <div className="absolute right-0 mt-2 w-48 bg-[#121212] border border-neutral-800 rounded-xl shadow-2xl p-1 z-20 animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="absolute right-0 mt-2 w-52 bg-[#121212] border border-neutral-800 rounded-xl shadow-2xl p-1 z-20">
+                
+                {/* Option 1 : Markdown */}
                 <button 
                   onClick={() => { onExport('md'); setDropdownOpen(false); }}
-                  className="w-full text-left px-4 py-2.5 text-sm text-neutral-300 hover:bg-neutral-800 rounded-lg transition-all"
+                  className="w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800 rounded-lg transition-all flex items-center gap-3"
                 >
-                  📄 Fichier Markdown (.md)
+                  <FileText className="w-4 h-4 text-neutral-500 shrink-0" />
+                  <span>Fichier Markdown (.md)</span>
                 </button>
+                
+                {/* Option 2 : HTML */}
                 <button 
                   onClick={() => { onExport('html'); setDropdownOpen(false); }}
-                  className="w-full text-left px-4 py-2.5 text-sm text-neutral-300 hover:bg-neutral-800 rounded-lg transition-all"
+                  className="w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800 rounded-lg transition-all flex items-center gap-3"
                 >
-                  🌐 Page Web (.html)
+                  <FileCode className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <span>Page Web (.html)</span>
                 </button>
+                
+                {/* Option 3 : PDF */}
                 <button 
                   onClick={() => { onExport('pdf'); setDropdownOpen(false); }}
-                  className="w-full text-left px-4 py-2.5 text-sm text-neutral-300 hover:bg-neutral-800 rounded-lg transition-all"
+                  className="w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800 rounded-lg transition-all flex items-center gap-3"
                 >
-                  📕 Document PDF (.pdf)
+                  <FileText className="w-4 h-4 text-red-500 shrink-0" />
+                  <span>Document PDF (.pdf)</span>
                 </button>
+
               </div>
             </>
           )}
